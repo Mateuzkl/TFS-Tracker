@@ -1,328 +1,103 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TFS Tracker • creature-sharedptr-final</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg-primary: #0a0a14; --bg-secondary: #111122; --bg-card: rgba(255,255,255,0.03);
-    --bg-card-hover: rgba(255,255,255,0.08); --glass: rgba(17,17,34,0.6);
-    --glass-border: rgba(255,255,255,0.08); --glass-border-hover: rgba(108,92,231,0.4);
-    --text-primary: #ffffff; --text-secondary: rgba(255,255,255,0.6); --text-muted: rgba(255,255,255,0.35);
-    --done: #00d4aa; --done-glow: rgba(0,212,170,0.3); --progress: #7c5cff; --progress-glow: rgba(124,92,255,0.3);
-    --pending: #ffb86c; --pending-glow: rgba(255,184,108,0.3); --blocked: #ff6b7a; --blocked-glow: rgba(255,107,122,0.3);
-    --smartptr: #6c5ce7; --lua: #fd79a8; --build: #00cec9; --perf: #fdcb6e; --protocol: #a29bfe; --security: #55efc4;
-    --shadow-soft: 0 4px 20px rgba(0,0,0,0.3); --shadow-glow: 0 0 40px rgba(108,92,231,0.25);
-    --shadow-card: 0 8px 32px rgba(0,0,0,0.4); --radius: 16px; --radius-sm: 12px; --radius-xs: 8px;
-    --ease: cubic-bezier(0.4, 0, 0.2, 1); --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  }
-  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg-primary); color: var(--text-primary);
-    min-height: 100vh; overflow-x: auto; position: relative; line-height: 1.5; }
-  body::before { content: ''; position: fixed; inset: -50%;
-    background: radial-gradient(ellipse at 15% 25%, rgba(108,92,231,0.12) 0%, transparent 55%),
-      radial-gradient(ellipse at 85% 75%, rgba(253,121,168,0.08) 0%, transparent 55%),
-      radial-gradient(ellipse at 50% 50%, rgba(0,206,201,0.06) 0%, transparent 60%);
-    animation: bgPulse 25s ease-in-out infinite; z-index: 0; pointer-events: none; }
-  @keyframes bgPulse { 0%,100%{transform:translate(0,0)scale(1)} 25%{transform:translate(2%,-1%)scale(1.02)} 50%{transform:translate(-1%,2%)scale(0.98)} 75%{transform:translate(1%,1%)scale(1.01)} }
-  .orb { position: fixed; border-radius: 50%; filter: blur(60px); opacity: 0.35; z-index: 0; pointer-events: none; animation: orbFloat 20s ease-in-out infinite; }
-  .orb-1 { width: 500px; height: 500px; background: var(--smartptr); top: -150px; left: -100px; }
-  .orb-2 { width: 350px; height: 350px; background: var(--lua); bottom: -80px; right: 5%; animation-delay: -7s; }
-  .orb-3 { width: 280px; height: 280px; background: var(--build); top: 45%; left: 60%; animation-delay: -14s; }
-  @keyframes orbFloat { 0%,100%{transform:translate(0,0)rotate(0deg)} 33%{transform:translate(80px,40px)rotate(120deg)} 66%{transform:translate(-40px,60px)rotate(240deg)} }
-  .grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px); background-size: 40px 40px; z-index: 0; pointer-events: none; }
-  .header { position: sticky; top: 0; z-index: 100; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; background: rgba(10,10,20,0.85); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border); }
-  .logo { display: flex; align-items: center; gap: 14px; }
-  .logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, var(--smartptr), var(--progress)); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 20px; box-shadow: 0 6px 24px rgba(108,92,231,0.4); animation: logoGlow 3s ease-in-out infinite; position: relative; overflow: hidden; }
-  .logo-icon::after { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%); transform: translateX(-100%); animation: shine 2.5s ease-in-out infinite; }
-  @keyframes logoGlow { 0%,100%{box-shadow:0 6px 24px rgba(108,92,231,0.4)} 50%{box-shadow:0 6px 36px rgba(108,92,231,0.65)} }
-  @keyframes shine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
-  .logo-text { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #fff, var(--smartptr)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.3px; }
-  .logo-subtitle { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-top: 2px; }
-  .header-stats { display: flex; align-items: center; gap: 24px; }
-  .stat-badge { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: var(--radius-xs); font-size: 13px; font-weight: 600; }
-  .stat-badge .dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.9)} }
-  .stat-done .dot { background: var(--done); box-shadow: 0 0 12px var(--done-glow); }
-  .stat-progress .dot { background: var(--progress); box-shadow: 0 0 12px var(--progress-glow); }
-  .stat-pending .dot { background: var(--pending); }
-  .header-actions { display: flex; align-items: center; gap: 12px; }
-  .search-box { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); transition: all 0.3s var(--ease); width: 260px; }
-  .search-box:focus-within { border-color: var(--smartptr); box-shadow: 0 0 0 3px var(--progress-glow); background: rgba(255,255,255,0.05); }
-  .search-box input { background: none; border: none; color: var(--text-primary); font-family: inherit; font-size: 14px; outline: none; width: 100%; }
-  .search-box input::placeholder { color: var(--text-secondary); }
-  .btn { padding: 10px 18px; border-radius: var(--radius-xs); border: none; font-family: inherit; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.25s var(--ease); display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; }
-  .btn::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent); opacity: 0; transition: opacity 0.2s; }
-  .btn:hover::before { opacity: 1; }
-  .btn-primary { background: linear-gradient(135deg, var(--smartptr), var(--progress)); color: white; box-shadow: 0 4px 20px rgba(108,92,231,0.35); }
-  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(108,92,231,0.5); }
-  .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--glass-border); }
-  .btn-ghost:hover { background: var(--bg-card-hover); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; border: 2px solid var(--bg-primary); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s var(--ease); margin-left: -8px; }
-  .avatar:first-child { margin-left: 0; }
-  .avatar:hover { transform: translateY(-3px) scale(1.05); z-index: 2; }
-  .avatar-1 { background: linear-gradient(135deg, #6c5ce7, #a29bfe); }
-  .avatar-2 { background: linear-gradient(135deg, #fd79a8, #fdcb6e); }
-  .avatar-3 { background: linear-gradient(135deg, #00cec9, #55efc4); }
-  .board { position: relative; z-index: 10; padding: 24px 32px; display: flex; gap: 20px; overflow-x: auto; min-height: calc(100vh - 90px); align-items: flex-start; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
-  .board::-webkit-scrollbar { height: 6px; }
-  .board::-webkit-scrollbar-track { background: transparent; }
-  .board::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-  .column { min-width: 340px; max-width: 340px; background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--radius); backdrop-filter: blur(24px); display: flex; flex-direction: column; max-height: calc(100vh - 130px); transition: all 0.3s var(--ease); animation: columnEnter 0.5s var(--ease) backwards; }
-  .column:nth-child(1){animation-delay:0.1s} .column:nth-child(2){animation-delay:0.15s} .column:nth-child(3){animation-delay:0.2s} .column:nth-child(4){animation-delay:0.25s} .column:nth-child(5){animation-delay:0.3s} .column:nth-child(6){animation-delay:0.35s}
-  @keyframes columnEnter { from{opacity:0;transform:translateY(24px)scale(0.97)} to{opacity:1;transform:translateY(0)scale(1)} }
-  .column.drag-over { border-color: var(--smartptr); box-shadow: 0 0 0 2px var(--progress-glow), var(--shadow-glow); background: rgba(108,92,231,0.08); }
-  .column-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: inherit; border-radius: var(--radius) var(--radius) 0 0; z-index: 5; }
-  .column-title-area { display: flex; align-items: center; gap: 12px; }
-  .column-badge { width: 12px; height: 12px; border-radius: 4px; animation: badgePulse 2.5s ease-in-out infinite; }
-  @keyframes badgePulse { 0%,100%{opacity:1;transform:scale(1);box-shadow:0 0 0 0 rgba(255,255,255,0)} 50%{opacity:0.8;transform:scale(0.95);box-shadow:0 0 12px currentColor} }
-  .column-title { font-size: 14px; font-weight: 700; letter-spacing: -0.2px; }
-  .column-count { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: 20px; padding: 2px 10px; font-size: 11px; font-weight: 700; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
-  .column-progress { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 8px; overflow: hidden; }
-  .column-progress-bar { height: 100%; border-radius: 2px; transition: width 0.6s var(--ease); background: linear-gradient(90deg, var(--done), var(--progress)); }
-  .column-actions { display: flex; gap: 4px; }
-  .col-btn { width: 30px; height: 30px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease); font-size: 15px; }
-  .col-btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
-  .column-cards { padding: 12px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
-  .column-cards::-webkit-scrollbar { width: 4px; }
-  .column-cards::-webkit-scrollbar-track { background: transparent; }
-  .column-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-  .add-card-btn { margin: 0 12px 12px; padding: 12px; border-radius: var(--radius-sm); border: 1px dashed var(--glass-border); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.25s var(--ease); display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .add-card-btn:hover { border-color: var(--smartptr); color: var(--smartptr); background: rgba(108,92,231,0.06); }
-  .card { background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 14px; cursor: grab; transition: all 0.25s var(--ease); position: relative; overflow: hidden; animation: cardEnter 0.35s var(--ease) backwards; }
-  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 2px 2px 0 0; opacity: 0; transition: opacity 0.2s; }
-  .card:hover::before { opacity: 1; }
-  .card:hover { background: var(--bg-card-hover); border-color: rgba(255,255,255,0.12); transform: translateY(-2px); box-shadow: var(--shadow-card); }
-  .card:active { cursor: grabbing; }
-  .card.dragging { opacity: 0.6; transform: rotate(2deg) scale(1.02); box-shadow: 0 20px 60px rgba(0,0,0,0.5); z-index: 100; }
-  @keyframes cardEnter { from{opacity:0;transform:translateY(16px)scale(0.98)} to{opacity:1;transform:translateY(0)scale(1)} }
-  .card-status { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
-  .card-status.done { background: var(--done); box-shadow: 0 0 12px var(--done-glow); }
-  .card-status.progress { background: var(--progress); box-shadow: 0 0 12px var(--progress-glow); }
-  .card-status.pending { background: var(--pending); }
-  .card-status.blocked { background: var(--blocked); }
-  .card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-  .card-title { font-size: 13px; font-weight: 600; line-height: 1.4; letter-spacing: -0.2px; }
-  .card-id { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.04); padding: 2px 6px; border-radius: 4px; flex-shrink: 0; }
-  .card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-  .tag { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
-  .tag-cpp { background: rgba(108,92,231,0.15); color: var(--smartptr); }
-  .tag-lua { background: rgba(253,121,168,0.15); color: var(--lua); }
-  .tag-build { background: rgba(0,206,201,0.15); color: var(--build); }
-  .tag-perf { background: rgba(253,203,110,0.15); color: var(--perf); }
-  .tag-proto { background: rgba(162,155,254,0.15); color: var(--protocol); }
-  .tag-security { background: rgba(85,239,196,0.15); color: var(--security); }
-  .card-meta { display: flex; align-items: center; justify-content: space-between; }
-  .card-meta-left { display: flex; align-items: center; gap: 10px; }
-  .meta-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
-  .card-check { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--glass-border); background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease); font-size: 12px; flex-shrink: 0; }
-  .card-check:hover { border-color: var(--done); color: var(--done); background: rgba(0,212,170,0.1); }
-  .card-check.checked { background: var(--done); border-color: var(--done); color: white; animation: checkPop 0.3s var(--ease-bounce); }
-  @keyframes checkPop { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
-  .card-progress { margin-top: 10px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
-  .card-progress-bar { height: 100%; border-radius: 2px; transition: width 0.5s var(--ease); }
-  .card-progress-bar.done { background: var(--done); }
-  .card-progress-bar.progress { background: linear-gradient(90deg, var(--progress), var(--done)); }
-  .card-progress-bar.pending { background: var(--pending); }
-  .add-card-form { margin: 0 12px 12px; background: var(--bg-card); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 12px; display: none; animation: formSlide 0.25s var(--ease); }
-  .add-card-form.active { display: block; }
-  @keyframes formSlide { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
-  .add-card-form textarea { width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: var(--radius-xs); padding: 10px; color: var(--text-primary); font-family: inherit; font-size: 13px; resize: none; outline: none; min-height: 50px; transition: border-color 0.2s; }
-  .add-card-form textarea:focus { border-color: var(--smartptr); }
-  .add-card-form-actions { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  .add-card-form-actions .btn { padding: 7px 14px; font-size: 12px; }
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); z-index: 1000; display: none; align-items: center; justify-content: center; animation: overlayFade 0.25s var(--ease); }
-  .modal-overlay.active { display: flex; }
-  @keyframes overlayFade { from{opacity:0} to{opacity:1} }
-  .modal { background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--radius); width: 95%; max-width: 640px; max-height: 85vh; overflow-y: auto; animation: modalSlide 0.35s var(--ease); box-shadow: 0 25px 80px rgba(0,0,0,0.6); }
-  @keyframes modalSlide { from{opacity:0;transform:scale(0.96)translateY(16px)} to{opacity:1;transform:scale(1)translateY(0)} }
-  .modal-header { padding: 20px 24px 16px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--glass-border); position: sticky; top: 0; background: inherit; border-radius: var(--radius) var(--radius) 0 0; z-index: 5; }
-  .modal-close { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.2s var(--ease); flex-shrink: 0; }
-  .modal-close:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-  .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-  .modal-subtitle { font-size: 13px; color: var(--text-secondary); }
-  .modal-body { padding: 20px 24px 24px; }
-  .modal-section { margin-bottom: 20px; }
-  .modal-section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-  .modal-description { width: 100%; min-height: 80px; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: var(--radius-xs); padding: 12px; color: var(--text-primary); font-family: inherit; font-size: 13px; line-height: 1.6; outline: none; resize: vertical; transition: border-color 0.2s; }
-  .modal-description:focus { border-color: var(--smartptr); }
-  .code-block { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-xs); padding: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); overflow-x: auto; line-height: 1.5; }
-  .code-block .keyword { color: var(--smartptr); }
-  .code-block .type { color: var(--build); }
-  .code-block .string { color: var(--perf); }
-  .code-block .comment { color: var(--text-muted); }
-  .checklist-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
-  .checklist-check { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--glass-border); background: transparent; color: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s var(--ease); font-size: 11px; flex-shrink: 0; }
-  .checklist-check:hover { border-color: var(--done); }
-  .checklist-check.checked { background: var(--done); border-color: var(--done); color: white; }
-  .checklist-text { font-size: 13px; flex: 1; }
-  .checklist-text.done { text-decoration: line-through; color: var(--text-muted); }
-  .confetti-container { position: fixed; inset: 0; pointer-events: none; z-index: 9999; }
-  .confetti { position: absolute; width: 8px; height: 8px; border-radius: 2px; animation: confettiFall 3s ease-in-out forwards; }
-  @keyframes confettiFall { 0%{transform:translateY(-20px)rotate(0deg);opacity:1} 100%{transform:translateY(100vh)rotate(720deg);opacity:0} }
-  .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
-  .toast { background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-card); animation: toastIn 0.3s var(--ease), toastOut 0.3s var(--ease) 2.7s forwards; backdrop-filter: blur(12px); min-width: 280px; }
-  @keyframes toastIn { from{opacity:0;transform:translateX(40px)scale(0.95)} to{opacity:1;transform:translateX(0)scale(1)} }
-  @keyframes toastOut { from{opacity:1;transform:translateX(0)scale(1)} to{opacity:0;transform:translateX(40px)scale(0.95)} }
-  .toast-icon { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
-  .toast-success .toast-icon { background: var(--done); color: white; }
-  .toast-info .toast-icon { background: var(--smartptr); color: white; }
-  .toast-warning .toast-icon { background: var(--pending); color: #000; }
-  .drag-placeholder { border: 2px dashed var(--smartptr); border-radius: var(--radius-sm); background: rgba(108,92,231,0.08); min-height: 90px; transition: all 0.2s var(--ease); }
-  .add-column { min-width: 340px; max-width: 340px; background: var(--glass); border: 2px dashed var(--glass-border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s var(--ease); min-height: 140px; animation: columnEnter 0.5s var(--ease) backwards; animation-delay: 0.4s; }
-  .add-column:hover { border-color: var(--smartptr); background: rgba(108,92,231,0.06); }
-  .add-column-content { text-align: center; color: var(--text-secondary); }
-  .add-column-icon { font-size: 28px; margin-bottom: 6px; }
-  .add-column-text { font-size: 13px; font-weight: 600; }
-  .filter-bar { display: flex; align-items: center; gap: 8px; padding: 12px 20px; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02); }
-  .filter-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s var(--ease); }
-  .filter-btn:hover, .filter-btn.active { background: var(--smartptr); color: white; border-color: var(--smartptr); }
-  @media (max-width: 768px) {
-    .header { padding: 12px 20px; flex-wrap: wrap; gap: 12px; }
-    .header-stats { order: 3; width: 100%; justify-content: center; }
-    .search-box { width: 100%; max-width: 240px; }
-    .board { padding: 16px 20px; }
-    .column { min-width: 290px; max-width: 290px; }
-    .add-column { min-width: 290px; max-width: 290px; }
-  }
-  .hidden { display: none !important; }
-  .fade-in { animation: fadeIn 0.3s var(--ease); }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  .sparkle { position: absolute; pointer-events: none; animation: sparkleAnim 0.6s ease-out forwards; }
-  @keyframes sparkleAnim { 0% { transform: scale(0) rotate(0deg); opacity: 1; } 100% { transform: scale(1.5) rotate(180deg); opacity: 0; } }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="TFS Tracker - Acompanhe issues e PRs do TFS"/>
+  <title>TFS Tracker • creature-sharedptr-final</title>
+  
+  <!-- CSS Organizado -->
+  <link rel="stylesheet" href="./assets/css/main.css" />
+  <link rel="stylesheet" href="./assets/css/components.css" />
+  <link rel="stylesheet" href="./assets/css/responsive.css" />
+  
+  <!-- Favicon (opcional) -->
+  <link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg" />
 </head>
 <body>
-<div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div><div class="grid-bg"></div>
-<header class="header">
-  <div class="logo">
-    <div class="logo-icon">⚡</div>
-    <div><div class="logo-text">TFS Tracker</div><div class="logo-subtitle">creature-sharedptr-final • SHA: e7d5dc7</div></div>
-  </div>
-  <div class="header-stats">
-    <div class="stat-badge stat-done"><span class="dot"></span><span><strong id="doneCount">42</strong> Concluído</span></div>
-    <div class="stat-badge stat-progress"><span class="dot"></span><span><strong id="progressCount">8</strong> Em Progresso</span></div>
-    <div class="stat-badge stat-pending"><span class="dot"></span><span><strong id="pendingCount">5</strong> Pendente</span></div>
-  </div>
-  <div class="header-actions">
-    <div class="search-box"><span>🔍</span><input type="text" placeholder="Buscar cards..." id="searchInput" oninput="filterCards()"></div>
-    <div style="display:flex;gap:-8px"><div class="avatar avatar-1">MK</div><div class="avatar avatar-2">TFS</div><div class="avatar avatar-3">C++</div></div>
-    <button class="btn btn-ghost" onclick="showToast('Configurações em breve!', 'info')">⚙️</button>
-    <button class="btn btn-primary" onclick="exportBoard()">📊 Exportar</button>
-  </div>
-</header>
-<div class="board" id="board"></div>
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-  <div class="modal" id="modal" onclick="event.stopPropagation()">
-    <div class="modal-header">
-      <div style="flex:1"><div class="modal-title" id="modalTitle">Título do Card</div><div class="modal-subtitle" id="modalSubtitle">Categoria • Status</div></div>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+  <header class="header">
+    <div class="container header-content">
+      <h1 class="logo">⚡ TFS Tracker</h1>
+      <span class="branch-badge">creature-sharedptr-final</span>
     </div>
-    <div class="modal-body">
-      <div class="modal-section"><div class="modal-section-title">📝 Descrição</div><textarea class="modal-description" id="modalDescription" placeholder="Detalhes técnicos, links, notas..."></textarea></div>
-      <div class="modal-section"><div class="modal-section-title">💻 Código Relacionado</div><div class="code-block" id="modalCode">// Código será exibido aqui</div></div>
-      <div class="modal-section"><div class="modal-section-title">✅ Checklist</div><div id="modalChecklist"></div></div>
-    </div>
-  </div>
-</div>
-<div class="confetti-container" id="confettiContainer"></div>
-<div class="toast-container" id="toastContainer"></div>
-<script>
-const columnsData = [
-  { id: 'smartpointers', title: '🔗 Smart Pointers', color: 'var(--smartptr)', progress: 97, cards: [
-    { id: 'sp1', title: 'Combat callbacks: shared_ptr<Creature>&', desc: 'drainHealth, gainHealth, onKilledCreature, addDamagePoints, getGainedExperience, blockHit', status: 'done', tags: ['cpp', 'security'], file: 'src/creature.h', code: `// ✅ AGORA - todos usam shared_ptr\nvirtual void drainHealth(const std::shared_ptr<Creature>& attacker, int32_t damage);\nvirtual bool onKilledCreature(const std::shared_ptr<Creature>& target, bool lastHit = true);`, checklist: [{text:'drainHealth convertido',done:true},{text:'gainHealth convertido',done:true},{text:'onKilledCreature convertido',done:true},{text:'addDamagePoints convertido',done:true},{text:'getGainedExperience convertido',done:true},{text:'blockHit convertido',done:true}], meta: { commits: 'e7d5dc7', lines: '+42/-38' }},
-    { id: 'sp2', title: 'Legacy getters raw: REMOVIDOS', desc: 'getAttackedCreature() e getFollowCreature() raw eliminados - callers usam *Shared()', status: 'done', tags: ['cpp', 'security'], file: 'src/creature.h', code: `// ❌ REMOVIDO - dangling pointer risk\n// Creature* getAttackedCreature() const { return attackedCreature.lock().get(); }\n\n// ✅ USAR AGORA\nstd::shared_ptr<Creature> getAttackedCreatureShared() const { \n  return attackedCreature.lock(); \n}`, checklist: [{text:'getAttackedCreature() raw removido',done:true},{text:'getFollowCreature() raw removido',done:true},{text:'game.cpp atualizado para *Shared()',done:true}], meta: { commits: 'e7d5dc7', risk: 'ZERO dangling' }},
-    { id: 'sp3', title: 'Lua user weak_ptr + validação', desc: 'getValidatedCreatureUserdata() com lock() + !isRemoved() check', status: 'done', tags: ['cpp', 'lua', 'security'], file: 'src/luascript.cpp', code: `// ✅ Validação segura para Lua\nauto creatureRef = weakPtr ? weakPtr->lock() : nullptr;\nif (creatureRef && !creatureRef->isRemoved()) {\n    return creatureRef.get(); // ✔ viva e válida\n}\nreturn nullptr; // Lua recebe nil`, checklist: [{text:'weak_ptr no uservalue',done:true},{text:'lock() + isRemoved() check',done:true},{text:'getCreatureWeakRef() em game.h',done:true}], meta: { crashes: 'ZERO pós-morte' }},
-    { id: 'sp4', title: 'Condition_ptr = unique_ptr<Condition>', desc: 'Semântica correta: Condition tem dono único, lista em std::list', status: 'done', tags: ['cpp'], file: 'src/condition.h', code: `using Condition_ptr = std::unique_ptr<Condition>;\nusing ConditionList = std::list<Condition_ptr>;`, checklist: [{text:'typedef unique_ptr confirmado',done:true},{text:'move semantics em addCondition',done:true}], meta: { note: 'list→vector: perf futura' }},
-    { id: 'sp5', title: 'SummonList: vector<weak_ptr<Creature>>', desc: 'Owner→summons usa weak_ptr - ZERO risco de ciclo shared_ptr', status: 'done', tags: ['cpp', 'security'], file: 'src/creature.h', code: `using SummonList = std::vector<std::weak_ptr<Creature>>;\n// master→summon: weak (não conta no refcount)\n// summon→master: weak_ptr master`, checklist: [{text:'SummonList = vector<weak_ptr>',done:true},{text:'setMaster() usa weak_ptr',done:true},{text:'getSummons() retorna por valor',done:true}], meta: { cycles: 'ZERO' }},
-    { id: 'sp6', title: 'CreatureRef<T> = shared_ptr<T>', desc: 'Alias template para código mais limpo e consistente', status: 'done', tags: ['cpp'], file: 'src/creature.h', code: `template<typename T>\nusing CreatureRef = std::shared_ptr<T>;\n\n// Uso: CreatureRef<Monster> monster = ...`, checklist: [{text:'typedef template adicionado',done:true},{text:'Documentação atualizada',done:false}], meta: { readability: '++' }},
-    { id: 'sp7', title: '⚠ CreatureEventList: ainda list<CreatureEvent*>', desc: 'Risco BAIXO: dangling se script Lua for hot-reloaded durante evento', status: 'pending', tags: ['cpp', 'lua'], file: 'src/creature.h', code: `// ⚠ PENDENTE - risco baixo mas real\nusing CreatureEventList = std::list<CreatureEvent*>;\n\n// Solução: weak_ptr<CreatureEvent> ou resolver por nome no dispatch`, checklist: [{text:'Avaliar impacto real de hot-reload',done:false},{text:'Implementar owner_before ou weak_ptr',done:false}], meta: { priority: 'Média', effort: 'Baixo' }},
-    { id: 'sp8', title: 'getMaster() raw remanescente', desc: 'Retorna .get() para compatibilidade interna - único getter raw', status: 'progress', tags: ['cpp'], file: 'src/creature.h', code: `Creature* getMaster() const {\n    auto creature = getMasterShared();\n    return creature.get(); // ⚠ raw, mas seguro se caller não armazenar\n}`, checklist: [{text:'Auditar todos os callers de getMaster()',done:true},{text:'Substituir por getMasterShared() onde possível',done:false}], meta: { compat: 'interna', risk: 'Baixo' }}
-  ]},
-  { id: 'build', title: '🔧 Build System', color: 'var(--build)', progress: 93, cards: [
-    { id: 'b1', title: 'C++23: CMAKE_CXX_STANDARD 23', desc: 'Mesmo nível do atlas-kit/atlas - features modernas habilitadas', status: 'done', tags: ['build', 'cpp'], file: 'CMakeLists.txt', code: `set(CMAKE_CXX_STANDARD 23)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)\nset(CMAKE_CXX_EXTENSIONS OFF)`, checklist: [{text:'CMakeLists.txt atualizado',done:true},{text:'Compilação com GCC 13+/Clang 16+',done:true}], meta: { compiler: 'GCC 13.2' }},
-    { id: 'b2', title: 'simdutf: UTF-8 ↔ Latin-1 acelerado', desc: '4-8x mais rápido que loops manuais - usado em networkmessage.cpp', status: 'done', tags: ['build', 'perf', 'proto'], file: 'src/networkmessage.cpp', code: `#include <simdutf.h>\n// Latin-1 → UTF-8\nconst auto writtenLen = simdutf::convert_latin1_to_utf8(\n    it, stringLen, out.data());`, checklist: [{text:'find_package(simdutf CONFIG REQUIRED)',done:true},{text:'encode Latin-1→UTF-8',done:true},{text:'decode UTF-8→Latin-1',done:true}], meta: { speedup: '4-8x' }},
-    { id: 'b3', title: 'absl::flat_hash_map para damageMap', desc: '~25-40% mais rápido em combate com múltiplos atacantes', status: 'done', tags: ['build', 'perf'], file: 'src/creature.h', code: `#include <absl/container/flat_hash_map.h>\nusing CountMap = absl::flat_hash_map<uint32_t, CountBlock_t>;\nCountMap damageMap;`, checklist: [{text:'find_package(absl CONFIG REQUIRED)',done:true},{text:'CountMap migrado para absl',done:true},{text:'Linking configurado',done:true}], meta: { perf: '+25-40%' }},
-    { id: 'b4', title: 'PGO 2-step: -fprofile-generate/use', desc: 'Profile-Guided Optimization para builds de produção', status: 'done', tags: ['build', 'perf'], file: 'CMakeLists.txt', code: `option(PGO_GENERATE "Generate PGO profile" OFF)\noption(PGO_USE "Use PGO profile" OFF)\nif(PGO_GENERATE)\n  add_compile_options(-fprofile-generate)\nendif()`, checklist: [{text:'Flags PGO no CMake',done:true},{text:'Documentação de uso',done:true}], meta: { perf: '+10-15%' }},
-    { id: 'b5', title: 'mimalloc opt-in: USE_MIMALLOC', desc: 'Microsoft mimalloc allocator - melhor performance em Linux', status: 'done', tags: ['build', 'perf'], file: 'CMakeLists.txt', code: `option(USE_MIMALLOC "Use mimalloc allocator" OFF)\nif(USE_MIMALLOC AND NOT WIN32)\n  find_package(mimalloc CONFIG)\n  target_link_libraries(tfs mimalloc)\nendif()`, checklist: [{text:'Flag CMake adicionada',done:true},{text:'Linking condicional',done:true}], meta: { alloc: 'mimalloc' }},
-    { id: 'b6', title: '⚠ ASAN: -DENABLE_ASAN ausente', desc: 'AddressSanitizer para detectar bugs de memória em QA', status: 'pending', tags: ['build', 'security'], file: 'CMakeLists.txt', code: `// ✅ COPIAR DO ATLAS (5 linhas)\noption(ENABLE_ASAN "Enable AddressSanitizer" OFF)\nif(ENABLE_ASAN)\n  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)\n  add_link_options(-fsanitize=address)\nendif()`, checklist: [{text:'Adicionar flag ENABLE_ASAN',done:false},{text:'Testar com bots por 5min',done:false}], meta: { priority: 'Média', effort: '5 linhas' }}
-  ]},
-  { id: 'lua', title: '🔒 Lua Safety', color: 'var(--lua)', progress: 90, cards: [
-    { id: 'l1', title: 'Modularização: 37 arquivos lua*.cpp', desc: 'luacreature, luaplayer, luamonster, luacombat... - código mais manutenível', status: 'done', tags: ['lua', 'cpp'], file: 'src/', code: `src/\n├── luascript.cpp      # Core\n├── luacreature.cpp    # Creature methods\n├── luaplayer.cpp      # Player methods\n├── luamonster.cpp     # Monster methods\n├── luacombat.cpp      # Combat functions\n└── ... (37 arquivos)`, checklist: [{text:'Separação por domínio',done:true},{text:'Headers atualizados',done:true},{text:'CMakeLists.txt modular',done:true}], meta: { files: '37' }},
-    { id: 'l2', title: 'getValidatedCreatureUserdata()', desc: 'Validação centralizada: lock + isRemoved + nil return', status: 'done', tags: ['lua', 'security'], file: 'src/luascript.cpp', code: `Creature* getValidatedCreatureUserdata(lua_State* L, int index) {\n    auto* weakPtr = static_cast<std::weak_ptr<Creature>*>(\n        lua_touserdata(L, -1));\n    auto creatureRef = weakPtr ? weakPtr->lock() : nullptr;\n    if (creatureRef && !creatureRef->isRemoved()) {\n        return creatureRef.get();\n    }\n    return nullptr; // Lua recebe nil\n}`, checklist: [{text:'Implementação em luascript.cpp',done:true},{text:'Todos os callers atualizados',done:true}], meta: { safety: 'Crash-free' }},
-    { id: 'l3', title: 'LuaJIT opt-in: -DUSE_LUAJIT=ON', desc: 'Suporte opcional para LuaJIT - até 3x mais rápido em scripts', status: 'done', tags: ['lua', 'build'], file: 'CMakeLists.txt', code: `option(USE_LUAJIT "Use LuaJIT" OFF)\nif(USE_LUAJIT)\n  find_package(LuaJIT REQUIRED)\n  target_link_libraries(tfs luajit)\nelse()\n  find_package(Lua "5.4" REQUIRED)\nendif()`, checklist: [{text:'Flag CMake adicionada',done:true},{text:'vcpkg.json atualizado',done:true}], meta: { speedup: 'até 3x' }},
-    { id: 'l4', title: 'CreatureEvent bitfield de eventos', desc: 'Script events com bitmask para checagem O(1)', status: 'done', tags: ['lua', 'perf'], file: 'src/creature.h', code: `uint32_t scriptEventsBitField = 0;\nbool hasEventRegistered(CreatureEventType_t event) const {\n    return (0 != (scriptEventsBitField & (1u << event)));\n}`, checklist: [{text:'Bitfield implementado',done:true},{text:'Register/unregister atualizados',done:true}], meta: { lookup: 'O(1)' }},
-    { id: 'l5', title: '⚠ Hot-reload de scripts Lua', desc: 'Garantir que CreatureEvent* não dangling após reload', status: 'pending', tags: ['lua', 'security'], file: 'src/creatureevent.cpp', code: `// Estratégia sugerida:\n// 1. Manter std::string do nome do evento\n// 2. Resolver CreatureEvent* no dispatch via Game::getCreatureEvent(name)\n// 3. OU: CreatureEvent herdar enable_shared_from_this`, checklist: [{text:'Mapear pontos de hot-reload',done:false},{text:'Implementar resolução por nome',done:false}], meta: { risk: 'Baixo', effort: 'Médio' }}
-  ]},
-  { id: 'perf', title: '⚡ Performance', color: 'var(--perf)', progress: 88, cards: [
-    { id: 'p1', title: '-O3 -march=native -fomit-frame-pointer', desc: 'Flags de otimização hardcoded para Release - máximo desempenho', status: 'done', tags: ['build', 'perf'], file: 'CMakeLists.txt', code: `set(CMAKE_CXX_FLAGS_RELEASE \n  "-O3 -march=native -mtune=native -fomit-frame-pointer -DNDEBUG")`, checklist: [{text:'Flags para CXX',done:true},{text:'Flags para C',done:true}], meta: { build: 'Release' }},
-    { id: 'p2', title: 'Unity Build: ENABLE_UNITY_BUILD ON', desc: 'Compilação mais rápida via unity builds - menos overhead de I/O', status: 'done', tags: ['build', 'perf'], file: 'CMakeLists.txt', code: `option(ENABLE_UNITY_BUILD "Enable unity build" ON)\nif(ENABLE_UNITY_BUILD)\n  set(CMAKE_UNITY_BUILD ON)\nendif()`, checklist: [{text:'Flag CMake configurada',done:true},{text:'Testado com build limpo',done:true}], meta: { speed: '+30% build' }},
-    { id: 'p3', title: 'IPO/LTO automático: check_ipo_supported', desc: 'Interprocedural Optimization habilitada se suportada pelo compiler', status: 'done', tags: ['build', 'perf'], file: 'CMakeLists.txt', code: `include(CheckIPOSupported)\ncheck_ipo_supported(RESULT result OUTPUT error)\nif(result)\n  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)\nendif()`, checklist: [{text:'Check IPO configurado',done:true},{text:'Fallback seguro se não suportado',done:true}], meta: { perf: '+5-10%' }},
-    { id: 'p4', title: '⚠ storageMap: ainda std::unordered_map', desc: 'absl já linkado - trocar para flat_hash_map para +perf em scripts', status: 'pending', tags: ['cpp', 'perf'], file: 'src/creature.h', code: `// ⚠ PENDENTE - 1 typedef\nstd::unordered_map<uint32_t, int64_t> storageMap;\n// → absl::flat_hash_map<uint32_t, int64_t> storageMap;`, checklist: [{text:'Trocar typedef em creature.h',done:false},{text:'Testar scripts com muitos storage',done:false}], meta: { effort: 'Mínimo', gain: '+15% storage' }},
-    { id: 'p5', title: '⚠ ConditionList: list → vector', desc: 'unique_ptr já correto - trocar container para melhor cache locality', status: 'pending', tags: ['cpp', 'perf'], file: 'src/creature.h', code: `// ⚠ PENDENTE - semântica OK, só perf\nusing ConditionList = std::list<Condition_ptr>;\n// → std::vector<Condition_ptr> (ajustar iterators se insert no meio)`, checklist: [{text:'Auditar executeConditions() para inserts',done:false},{text:'Trocar typedef + testar',done:false}], meta: { effort: 'Baixo', gain: 'cache locality' }}
-  ]},
-  { id: 'protocol', title: '🌐 Protocol 8.60', color: 'var(--protocol)', progress: 100, cards: [
-    { id: 'pr1', title: 'Downgrade completo: 1.8 → 8.60', desc: 'Todos os sistemas adaptados para protocolo 8.60 - compatível com client original', status: 'done', tags: ['proto', 'cpp'], file: 'src/protocolgame.cpp', code: `// Protocolo 8.60 features:\n// - Sem mounts no protocolo (client não suporta)\n// - Outfit limit: 255 (uint8)\n// - Magic effects: 255 (uint8)`, checklist: [{text:'ProtocolGame adaptado',done:true},{text:'NetworkMessage compatível',done:true},{text:'Packets 8.60 implementados',done:true}], meta: { client: '8.60 CIP' }},
-    { id: 'pr2', title: 'DLL patches: estender client 8.60', desc: '__MAGIC_EFFECTS_U16__, __DISTANCE_SHOOT_U16__, __PLAYER_HEALTH_U32__', status: 'done', tags: ['proto', 'build'], file: 'client/dll/', code: `// DLL patches disponíveis:\n#define __MAGIC_EFFECTS_U16__    // 255 → 65535\n#define __DISTANCE_SHOOT_U16__   // 255 → 65535  \n#define __PLAYER_HEALTH_U32__    // 65535 → 4.2B`, checklist: [{text:'MAGIC_EFFECTS_U16 implementado',done:true},{text:'DISTANCE_SHOOT_U16 implementado',done:true},{text:'PLAYER_HEALTH_U32 implementado',done:true}], meta: { limits: 'Estendidos' }},
-    { id: 'pr3', title: 'ClientID-only: sem ServerID conversion', desc: 'Items, maps (OTBM), Lua e DB usam ClientID diretamente - debugging simplificado', status: 'done', tags: ['proto', 'cpp'], file: 'src/items.h', code: `// ✅ ClientID direto em tudo:\n// - Items: ClientID = ID no server\n// - Maps OTBM: ClientIDs\n// - Lua: getItemIdByName() retorna ClientID\n// - DB: item_id = ClientID`, checklist: [{text:'Remover ServerID conversion layer',done:true},{text:'Atualizar OTBM loader',done:true},{text:'Lua API usa ClientID',done:true}], meta: { simplicity: '++' }},
-    { id: 'pr4', title: 'Extended Sprites: GameSpritesU32', desc: 'Suporte a sprites >64k via OTCv8/Mehah - futuro-proof', status: 'done', tags: ['proto', 'client'], file: 'modules/game_features/', code: `if(version >= 860) {\n    g_game.enableFeature(GameSpritesU32);\n    // Sprites: uint32 instead of uint16\n}`, checklist: [{text:'Feature flag no client',done:true},{text:'ProtocolGame suporta U32',done:true}], meta: { sprites: '65535+' }}
-  ]},
-  { id: 'security', title: '🛡️ Security & QA', color: 'var(--security)', progress: 85, cards: [
-    { id: 's1', title: 'ZERO delete this / referenceCounter manual', desc: 'Memória 100% gerenciada por smart pointers - use-after-free eliminado', status: 'done', tags: ['security', 'cpp'], file: 'src/creature.cpp', code: `// ✅ ANTES (risco):\nif(--referenceCounter == 0) delete this; // ⚠ dangling!\n\n// ✅ AGORA:\n// Creature herda enable_shared_from_this\n// Destruição automática via shared_ptr refcount`, checklist: [{text:'referenceCounter removido',done:true},{text:'delete this eliminado',done:true},{text:'enable_shared_from_this em Creature',done:true}], meta: { safety: 'Memory-safe' }},
-    { id: 's2', title: 'ZERO ciclos shared_ptr: todos relacionais = weak_ptr', desc: 'master, summons, attackedCreature, followCreature, tile, lastAttacker: weak', status: 'done', tags: ['security', 'cpp'], file: 'src/creature.h', code: `std::weak_ptr<Tile> tile;\nstd::weak_ptr<Creature> attackedCreature, followCreature, master, lastAttacker;\nSummonList summons; // = vector<weak_ptr<Creature>>`, checklist: [{text:'6 ponteiros relacionais = weak_ptr',done:true},{text:'Auditado: ZERO ciclos possíveis',done:true}], meta: { cycles: 'ZERO' }},
-    { id: 's3', title: 'setRemoved() cleanup: reset weak_ptrs', desc: 'Ao remover criatura, attackedCreature e followCreature são resetados', status: 'done', tags: ['security', 'cpp'], file: 'src/creature.h', code: `void setRemoved() {\n    isInternalRemoved = true;\n    removedTime = OTSYS_TIME();\n    attackedCreature.reset(); // ⚠ previne dangling\n    followCreature.reset();\n}`, checklist: [{text:'reset() em attackedCreature',done:true},{text:'reset() em followCreature',done:true}], meta: { cleanup: 'Automático' }},
-    { id: 's4', title: 'ENABLE_SLOW_TASK_DETECTION', desc: 'Logging de tasks >100ms para identificar bottlenecks em produção', status: 'done', tags: ['security', 'perf'], file: 'CMakeLists.txt', code: `option(ENABLE_SLOW_TASK_DETECTION "Enable slow task logging" ON)\nif(ENABLE_SLOW_TASK_DETECTION)\n  ADD_DEFINITIONS(-DSLOW_TASK_DETECTION)\nendif()`, checklist: [{text:'Flag CMake adicionada',done:true},{text:'Logging implementado em dispatcher',done:true}], meta: { threshold: '100ms' }},
-    { id: 's5', title: '⚠ Valgrind/ASAN test suite', desc: 'Criar suite de testes com ASAN para validar zero memory bugs', status: 'pending', tags: ['security', 'build'], file: 'tests/', code: `# Após adicionar -DENABLE_ASAN:\nmkdir build-asan && cd build-asan\ncmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_ASAN=ON ..\nmake -j$(nproc)\n./tfs # rodar com bots por 5min`, checklist: [{text:'Adicionar ENABLE_ASAN flag',done:false},{text:'Script de teste com bots',done:false},{text:'CI integration (GitHub Actions)',done:false}], meta: { priority: 'Média', effort: 'Baixo' }}
-  ]}
-];
-let currentModalCard = null, draggedCard = null, draggedCardId = null, sourceColumn = null;
-function renderBoard() {
-  const board = document.getElementById('board'); board.innerHTML = '';
-  columnsData.forEach((col, colIndex) => {
-    const columnEl = document.createElement('div'); columnEl.className = 'column'; columnEl.dataset.columnId = col.id; columnEl.style.animationDelay = `${colIndex * 0.05}s`;
-    const done = col.cards.filter(c => c.status === 'done').length; const total = col.cards.length; const progressPct = Math.round((done / total) * 100);
-    columnEl.innerHTML = `<div class="column-header"><div class="column-title-area"><div class="column-badge" style="background:${col.color};color:${col.color}"></div><span class="column-title">${col.title}</span><span class="column-count">${done}/${total}</span></div><div class="column-actions"><button class="col-btn" title="Adicionar card" onclick="showAddForm('${col.id}')">＋</button><button class="col-btn" title="Filtrar">🔍</button></div></div><div class="filter-bar"><button class="filter-btn active" data-filter="all">Todos</button><button class="filter-btn" data-filter="done">✅</button><button class="filter-btn" data-filter="progress">🔄</button><button class="filter-btn" data-filter="pending">⏳</button></div><div class="column-progress"><div class="column-progress-bar" style="width:${progressPct}%"></div></div><div class="column-cards" id="cards-${col.id}" data-column="${col.id}">${col.cards.map((card, i) => renderCard(card, i)).join('')}</div><button class="add-card-btn" id="addBtn-${col.id}" onclick="showAddForm('${col.id}')"><span>＋</span> Adicionar card</button><div class="add-card-form" id="form-${col.id}"><textarea placeholder="Descreva a tarefa técnica..." id="textarea-${col.id}"></textarea><div class="add-card-form-actions"><button class="btn btn-primary" onclick="addCard('${col.id}')">Adicionar</button><button class="btn btn-ghost" onclick="hideAddForm('${col.id}')">Cancelar</button></div></div>`;
-    board.appendChild(columnEl);
-    columnEl.querySelectorAll('.filter-btn').forEach(btn => { btn.onclick = (e) => { columnEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); filterColumnCards(col.id, btn.dataset.filter); }; });
-  });
-  const addCol = document.createElement('div'); addCol.className = 'add-column'; addCol.onclick = addColumn; addCol.innerHTML = `<div class="add-column-content"><div class="add-column-icon">＋</div><div class="add-column-text">Adicionar categoria</div></div>`; board.appendChild(addCol); setupDragAndDrop(); updateStats();
-}
-function renderCard(card, index) {
-  const tagsHtml = card.tags.map(t => `<span class="tag tag-${t}">${t}</span>`).join('');
-  const progressClass = card.status === 'done' ? 'done' : card.status === 'progress' ? 'progress' : 'pending';
-  const progressWidth = card.status === 'done' ? 100 : card.status === 'progress' ? 60 : 20;
-  return `<div class="card" draggable="true" data-card-id="${card.id}" style="animation-delay:${index * 0.03}s" onclick="openModal('${card.id}')"><div class="card-status ${card.status}"></div><div class="card-header"><div class="card-title">${card.title}</div><span class="card-id">${card.meta?.commits || 'TFS'}</span></div><div class="card-desc">${card.desc}</div><div class="card-tags">${tagsHtml}</div><div class="card-progress"><div class="card-progress-bar ${progressClass}" style="width:${progressWidth}%"></div></div><div class="card-meta"><div class="card-meta-left">${card.meta?.lines ? `<span class="meta-item">📝 ${card.meta.lines}</span>` : ''}${card.meta?.perf ? `<span class="meta-item">⚡ ${card.meta.perf}</span>` : ''}</div><button class="card-check ${card.status === 'done' ? 'checked' : ''}" onclick="event.stopPropagation();toggleCardStatus('${card.id}', this)" title="${card.status === 'done' ? 'Concluído' : 'Marcar como concluído'}">${card.status === 'done' ? '✓' : ''}</button></div></div>`;
-}
-function setupDragAndDrop() {
-  document.querySelectorAll('.card').forEach(card => { card.addEventListener('dragstart', handleDragStart); card.addEventListener('dragend', handleDragEnd); });
-  document.querySelectorAll('.column-cards').forEach(col => { col.addEventListener('dragover', handleDragOver); col.addEventListener('dragenter', handleDragEnter); col.addEventListener('dragleave', handleDragLeave); col.addEventListener('drop', handleDrop); });
-}
-function handleDragStart(e) { draggedCard = this; draggedCardId = this.dataset.cardId; sourceColumn = this.closest('.column-cards').dataset.column; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', draggedCardId); }
-function handleDragEnd() { this.classList.remove('dragging'); document.querySelectorAll('.column').forEach(c => c.classList.remove('drag-over')); document.querySelectorAll('.drag-placeholder').forEach(p => p?.remove()); draggedCard = null; }
-function handleDragOver(e) { e.preventDefault(); const column = this; const afterElement = getDragAfterElement(column, e.clientY); let placeholder = column.querySelector('.drag-placeholder'); if (!placeholder) { placeholder = document.createElement('div'); placeholder.className = 'drag-placeholder'; } if (afterElement) { column.insertBefore(placeholder, afterElement); } else { column.appendChild(placeholder); } }
-function handleDragEnter(e) { e.preventDefault(); this.closest('.column').classList.add('drag-over'); }
-function handleDragLeave(e) { const rect = this.getBoundingClientRect(); if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) { this.closest('.column').classList.remove('drag-over'); } }
-function handleDrop(e) { e.preventDefault(); const targetColumnId = this.dataset.column; const cardId = e.dataTransfer.getData('text/plain'); let sourceCol = columnsData.find(c => c.id === sourceColumn); let targetCol = columnsData.find(c => c.id === targetColumnId); let cardIndex = sourceCol.cards.findIndex(c => c.id === cardId); let card = sourceCol.cards.splice(cardIndex, 1)[0]; const afterElement = getDragAfterElement(this, e.clientY); if (afterElement) { const afterCardId = afterElement.dataset.cardId; const afterIndex = targetCol.cards.findIndex(c => c.id === afterCardId); targetCol.cards.splice(afterIndex, 0, card); } else { targetCol.cards.push(card); } if (targetColumnId === 'smartpointers' && card.status === 'done') { launchConfetti(); showToast('Smart pointer migrado! 🎉', 'success'); } renderBoard(); }
-function getDragAfterElement(container, y) { const elements = [...container.querySelectorAll('.card:not(.dragging)')]; return elements.find(el => { const rect = el.getBoundingClientRect(); return y < rect.top + rect.height / 2; }); }
-function showAddForm(columnId) { document.getElementById(`form-${columnId}`).classList.add('active'); document.getElementById(`addBtn-${columnId}`).style.display = 'none'; document.getElementById(`textarea-${columnId}`).focus(); }
-function hideAddForm(columnId) { document.getElementById(`form-${columnId}`).classList.remove('active'); document.getElementById(`addBtn-${columnId}`).style.display = 'flex'; }
-function addCard(columnId) { const textarea = document.getElementById(`textarea-${columnId}`); const title = textarea.value.trim(); if (!title) return; const col = columnsData.find(c => c.id === columnId); const newCard = { id: 'c' + Date.now(), title: title, desc: '', status: 'pending', tags: ['cpp'], file: 'src/', code: '// Novo código aqui', checklist: [], meta: {} }; col.cards.push(newCard); hideAddForm(columnId); textarea.value = ''; renderBoard(); showToast('Card criado!', 'success'); }
-function toggleCardStatus(cardId, btn) { let card = null; columnsData.forEach(col => { const found = col.cards.find(c => c.id === cardId); if (found) card = found; }); if (!card) return; const wasDone = card.status === 'done'; card.status = wasDone ? 'progress' : 'done'; btn.classList.toggle('checked'); btn.innerHTML = card.status === 'done' ? '✓' : ''; if (card.status === 'done' && !wasDone) { const cardEl = btn.closest('.card'); cardEl.classList.add('completing'); setTimeout(() => cardEl.classList.remove('completing'), 500); launchConfetti(); showToast('Tarefa concluída! 🎉', 'success'); } renderBoard(); }
-function filterColumnCards(columnId, filter) { const cardsContainer = document.getElementById(`cards-${columnId}`); cardsContainer.querySelectorAll('.card').forEach(card => { const cardId = card.dataset.cardId; let card = null; columnsData.find(col => { const found = col.cards.find(c => c.id === cardId); if (found) card = found; return found; }); if (filter === 'all' || card?.status === filter) { card.style.display = ''; } else { card.style.display = 'none'; } }); }
-function openModal(cardId) { let card = null; columnsData.forEach(col => { const found = col.cards.find(c => c.id === cardId); if (found) { card = found; } }); if (!card) return; currentModalCard = card; document.getElementById('modalTitle').textContent = card.title; document.getElementById('modalSubtitle').textContent = `${card.file} • ${card.status.toUpperCase()}`; document.getElementById('modalDescription').value = card.desc; document.getElementById('modalCode').textContent = card.code || '// Sem código relacionado'; const checklistHtml = (card.checklist || []).map((item, i) => `<div class="checklist-item"><button class="checklist-check ${item.done ? 'checked' : ''}" onclick="toggleChecklistItem(${i})">✓</button><span class="checklist-text ${item.done ? 'done' : ''}">${item.text}</span></div>`).join('') || '<div style="color:var(--text-muted);font-size:13px">Nenhum item no checklist</div>'; document.getElementById('modalChecklist').innerHTML = checklistHtml; document.getElementById('modalOverlay').classList.add('active'); }
-function closeModal(event) { if (event && event.target !== document.getElementById('modalOverlay')) return; document.getElementById('modalOverlay').classList.remove('active'); if (currentModalCard) { currentModalCard.desc = document.getElementById('modalDescription').value; renderBoard(); } }
-function toggleChecklistItem(index) { if (!currentModalCard?.checklist?.[index]) return; currentModalCard.checklist[index].done = !currentModalCard.checklist[index].done; const checklistHtml = currentModalCard.checklist.map((item, i) => `<div class="checklist-item"><button class="checklist-check ${item.done ? 'checked' : ''}" onclick="toggleChecklistItem(${i})">✓</button><span class="checklist-text ${item.done ? 'done' : ''}">${item.text}</span></div>`).join(''); document.getElementById('modalChecklist').innerHTML = checklistHtml; const allDone = currentModalCard.checklist.every(c => c.done); if (allDone && currentModalCard.status !== 'done') { currentModalCard.status = 'done'; showToast('Checklist completo! 🎉', 'success'); renderBoard(); } }
-function addColumn() { const name = prompt('Nome da nova categoria:'); if (!name) return; const colors = ['var(--smartptr)', 'var(--build)', 'var(--lua)', 'var(--perf)', 'var(--protocol)', 'var(--security)']; const newCol = { id: 'col_' + Date.now(), title: name, color: colors[Math.floor(Math.random() * colors.length)], progress: 0, cards: [] }; columnsData.splice(columnsData.length - 1, 0, newCol); renderBoard(); showToast(`Categoria "${name}" criada!`, 'success'); }
-function launchConfetti() { const container = document.getElementById('confettiContainer'); const colors = ['#6c5ce7', '#fd79a8', '#fdcb6e', '#00cec9', '#a29bfe', '#55efc4', '#00d4aa', '#fff']; for (let i = 0; i < 60; i++) { const piece = document.createElement('div'); piece.className = 'confetti'; piece.style.left = Math.random() * 100 + '%'; piece.style.top = '-10px'; piece.style.background = colors[Math.floor(Math.random() * colors.length)]; piece.style.width = Math.random() * 8 + 4 + 'px'; piece.style.height = Math.random() * 8 + 4 + 'px'; piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px'; piece.style.animationDuration = Math.random() * 2 + 2 + 's'; piece.style.animationDelay = Math.random() * 0.5 + 's'; container.appendChild(piece); setTimeout(() => piece.remove(), 4000); } }
-function showToast(message, type = 'success') { const container = document.getElementById('toastContainer'); const toast = document.createElement('div'); toast.className = `toast toast-${type}`; const icon = type === 'success' ? '✓' : type === 'warning' ? '⚠' : 'ℹ'; toast.innerHTML = `<div class="toast-icon">${icon}</div><span>${message}</span>`; container.appendChild(toast); setTimeout(() => toast.remove(), 3000); }
-function updateStats() { let done = 0, progress = 0, pending = 0; columnsData.forEach(col => { col.cards.forEach(card => { if (card.status === 'done') done++; else if (card.status === 'progress') progress++; else pending++; }); }); document.getElementById('doneCount').textContent = done; document.getElementById('progressCount').textContent = progress; document.getElementById('pendingCount').textContent = pending; }
-function filterCards() { const query = document.getElementById('searchInput').value.toLowerCase(); document.querySelectorAll('.card').forEach(card => { const title = card.querySelector('.card-title').textContent.toLowerCase(); const desc = card.querySelector('.card-desc')?.textContent.toLowerCase() || ''; const tags = [...card.querySelectorAll('.tag')].map(t => t.textContent.toLowerCase()).join(' '); const match = title.includes(query) || desc.includes(query) || tags.includes(query); card.style.display = match ? '' : 'none'; }); }
-function exportBoard() { const data = { project: 'TFS creature-sharedptr-final', sha: 'e7d5dc7', date: new Date().toISOString(), columns: columnsData.map(col => ({ title: col.title, progress: col.progress, cards: col.cards.map(c => ({ title: c.title, status: c.status, file: c.file, tags: c.tags }))) }) }; const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `tfs-tracker-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url); showToast('Board exportado! 📊', 'success'); }
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); document.getElementById('searchInput').focus(); } });
-document.addEventListener('DOMContentLoaded', () => { renderBoard(); showToast('TFS Tracker carregado! • SHA: e7d5dc7', 'info'); });
-</script>
+  </header>
+
+  <main class="container">
+    <!-- Stats Section -->
+    <section class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-number" id="total-count">42</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-item status-done">
+        <span class="stat-number" id="done-count">8</span>
+        <span class="stat-label">Concluído</span>
+      </div>
+      <div class="stat-item status-progress">
+        <span class="stat-number" id="progress-count">5</span>
+        <span class="stat-label">Em Progresso</span>
+      </div>
+      <div class="stat-item status-pending">
+        <span class="stat-number" id="pending-count">5</span>
+        <span class="stat-label">Pendente</span>
+      </div>
+    </section>
+
+    <!-- Toolbar -->
+    <section class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Buscar cards..." />
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">Todos</button>
+        <button class="filter-btn" data-filter="MK">MK</button>
+        <button class="filter-btn" data-filter="TFS">TFS</button>
+        <button class="filter-btn" data-filter="C++">C++</button>
+      </div>
+      <button class="export-btn" id="export-btn">📊 Exportar</button>
+    </section>
+
+    <!-- Cards Grid -->
+    <section class="cards-grid" id="cards-container">
+      <!-- Card Exemplo -->
+      <article class="card" data-status="done" data-category="TFS">
+        <div class="card-header">
+          <span class="card-category">TFS</span>
+          <span class="card-status status-done">Concluído</span>
+        </div>
+        <h3 class="card-title">Implementar shared_ptr em Creature</h3>
+        <p class="card-description">Refatoração do sistema de creatures para usar smart pointers...</p>
+        
+        <details class="card-details">
+          <summary>💻 Código Relacionado</summary>
+          <pre><code>// Código será exibido aqui
+class Creature : public std::enable_shared_from_this&lt;Creature&gt; {
+  // ...
+};</code></pre>
+        </details>
+
+        <div class="card-checklist">
+          <label><input type="checkbox" checked /> Testes unitários</label>
+          <label><input type="checkbox" checked /> Documentação</label>
+          <label><input type="checkbox" /> Code review</label>
+        </div>
+
+        <div class="card-footer">
+          <span class="card-sha">SHA: e7d5dc7</span>
+          <button class="card-toggle" aria-label="Expandir">⚙️</button>
+        </div>
+      </article>
+      <!-- Mais cards serão inseridos via JS -->
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>TFS Tracker • Feito com ❤️ para a comunidade OTServ</p>
+  </footer>
+
+  <!-- JS Organizado -->
+  <script src="./assets/js/utils.js" defer></script>
+  <script src="./assets/js/app.js" defer></script>
 </body>
 </html>
